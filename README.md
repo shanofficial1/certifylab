@@ -36,7 +36,7 @@ No server. No cloud. **Your files never leave your device.**
 ## 📦 Installation & Run
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/CertiFlow.git
+git clone https://github.com/shanofficial1/CertiFlow.git
 cd CertiFlow
 npm install
 npm run dev
