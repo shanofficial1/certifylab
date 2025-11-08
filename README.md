@@ -1,42 +1,37 @@
-# ⭐ CertiFlow
-Generate multiple personalized certificates in **one click** — completely **offline** and **in your browser**.
-
-CertiFlow lets you upload a certificate template, paste lists of names & teams, customize the description text using placeholders, and export **Name.pdf** certificates in bulk — packaged neatly in a single ZIP file.
-
-No server. No cloud. **Your files never leave your device.**
+# 🔖 CertifyLab
+Generate multiple personalized certificates in **one go** — with **live preview**, smart wrapping, and ZIP export.  
+**Live:** https://certifylab.netlify.app/
 
 ---
 
-## 🚀 Features
+## ✨ Features
+- **Batch generation** from a single template
+- **Dynamic placeholders**: `{name}` and `{team}` inside your description
+- **Live, on-template preview** (updates as you type/adjust)
+- **Smart word wrapping** with optional **justification**
+- **Equal left/right padding** control
+- **Click-to-position** the paragraph (set baseline Y on the template)
+- **Bold placeholders** toggle for `{name}` / `{team}`
+- **Custom fonts** (`.ttf`, `.otf`) for PDF output (optional)
+- **ZIP export** → `Name.pdf` for each participant
+- **Privacy-first**: No server, no DB — everything runs in your browser
 
-| Feature | Description |
-|--------|-------------|
-| **Batch Generation** | Create 10, 50, or even 500 certificates in one run. |
-| **Dynamic Text Replacement** | Use `{name}` and `{team}` placeholders in the certificate description. |
-| **Smart Text Wrapping** | Auto-wrap and **justified paragraph** formatting with equal side padding. |
-| **Click Positioning** | Click directly on the template to set where the text should appear. |
-| **Custom Fonts** | Upload `.ttf` / `.otf` fonts to match your design. |
-| **Offline Processing** | Everything runs in the browser. Zero uploads. Zero privacy risk. |
-| **ZIP Export** | Outputs `certificates.zip` containing `Name.pdf` files. |
+> ⚠️ **Templates:** PNG/JPG images only (no PDF upload).
 
 ---
 
 ## 🧑‍💻 Tech Stack
-
-| Purpose | Tool |
-|--------|------|
-| UI Layout | React + Tailwind CSS |
-| PDF Rendering | `pdf-lib` |
-| ZIP Packaging | `JSZip` |
-| File Download | `file-saver` |
-| Template Preview (optional) | `pdfjs-dist` |
+- **React**, **Tailwind CSS**
+- **pdf-lib** (PDF creation)
+- **JSZip** (ZIP packaging)
+- **FileSaver** (downloads)
+- *(Optional)* **pdfjs-dist** for PDF template preview (disabled in this build)
 
 ---
 
-## 📦 Installation & Run
-
+## 🚀 Quick Start (Local)
 ```bash
-git clone https://github.com/shanofficial1/CertiFlow.git
-cd CertiFlow
+git clone https://github.com/<your-username>/certifylab.git
+cd certifylab
 npm install
 npm run dev
