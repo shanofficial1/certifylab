@@ -31,7 +31,7 @@ Generate multiple personalized certificates in **one go** — with **live previe
 
 ## 🚀 Quick Start (Local)
 ```bash
-git clone https://github.com/<your-username>/certifylab.git
+git clone https://github.com/shanofficial1/certifylab.git
 cd certifylab
 npm install
 npm run dev
