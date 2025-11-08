@@ -326,7 +326,7 @@ export default function CertificateBatchGenerator() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                 <div>
-                  <Label>Template (PNG/JPG/PDF – 1 page)</Label>
+                  <Label>Template (PNG/JPG)</Label>
                   <Input type="file" accept="image/png,image/jpeg,application/pdf"
                     onChange={(e) => onTemplateChange(e.target.files?.[0])} />
                 </div>
