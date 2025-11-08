@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import logo from "@/assets/logo.png";
 
 // ----------------- utils -----------------
 const fileToDataURL = (file) =>
@@ -306,10 +307,13 @@ export default function CertificateBatchGenerator() {
   return (
     <>
       {/* NAVBAR */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
+      <header className="sticky top-0 z-50 bg-black backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-slate-900"></div>
+            <div className="h-14 w-48 rounded-lg">
+              <img src={logo} alt="CertifyLab Logo" className="h-full w-full object-contain " />
+
+            </div>
             <span className="text-xl font-semibold tracking-tight">CertifyLab</span>
           </div>
         </div>
