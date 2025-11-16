@@ -1,0 +1,113 @@
+/* src/theme.css
+   Global theme using OKLCH background + white text.
+   You asked for: oklch(12.964% 0.02739 261.707) and white text
+*/
+
+:root {
+  --theme-bg: oklch(12.964% 0.02739 261.707);
+  --theme-border: oklch(92.058% 0.00931 258.487 / 0.114);
+  --theme-text: #ffffff;
+}
+
+/* Fallback for older browsers (approximate) */
+@supports not (color: oklch(12% 0.02 260)) {
+  :root {
+    --theme-bg: #10131a;
+    --theme-border: #f6f7fb;
+    --theme-text: #ffffff;
+  }
+}
+
+/* Apply to body */
+html, body, #root {
+  height: 100%;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utilities & components */
+.bg-theme { background: var(--theme-bg) !important; color: var(--theme-text) !important; }
+.text-theme { color: var(--theme-text) !important; }
+.border-theme { border: 1px solid var(--theme-border) !important; }
+
+.card-theme {
+  background: var(--theme-bg) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--theme-text);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.45);
+}
+
+/* navbar */
+.navbar-theme {
+  background: var(--theme-bg);
+  border-bottom: 1px solid var(--theme-border);
+  color: var(--theme-text);
+}
+
+/* buttons */
+.btn-theme {
+  background: rgba(255,255,255,0.06);
+  color: var(--theme-text);
+  border: 1px solid var(--theme-border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btn-theme:hover { background: rgba(255,255,255,0.12); }
+
+/* inputs */
+input, textarea, select {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--theme-text);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+/* small helpers */
+.text-theme-muted { color: rgba(255,255,255,0.78); }
+.small-card { padding: 10px; border-radius: 10px; }
+
+/* modal */
+.modal-theme {
+  background: var(--theme-bg);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* responsiveness */
+@media (max-width: 768px) {
+  .card-theme { padding: 10px; border-radius: 10px; }
+}
+
+
+/* Custom thin scrollbar */
+.scroll-style::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-style::-webkit-scrollbar-track {
+  background: oklch(12.964% 0.02739 261.707); /* dark background */
+}
+
+.scroll-style::-webkit-scrollbar-thumb {
+  background: oklch(86.9% 0.022 252.894); /* light border color */
+  border-radius: 5px;
+}
+
+.scroll-style::-webkit-scrollbar-thumb:hover {
+  background: oklch(90% 0.02 260); 
+}
+
+/* Firefox */
+.scroll-style {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(86.9% 0.022 252.894) oklch(12.964% 0.02739 261.707);
+}

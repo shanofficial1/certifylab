@@ -130,7 +130,12 @@ function drawLines(page, lines, opts) {
   for (let li = 0; li < lines.length; li++) {
     const { items, width } = lines[li];
     const isLastLine = li === lines.length - 1;
-    let cursorX = x;
+let cursorX =
+  opts.align === "center"
+    ? x - width / 2
+    : opts.align === "right"
+    ? x - width
+    : x;
 
     let extraPerSpace = 0;
     if (justify && !isLastLine && width < maxWidth) {
