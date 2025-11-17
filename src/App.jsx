@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import CertificateBatchGenerator1 from "./CertificateBatchGenerator1";
 import { AnnouncementModal } from "./components/AnnouncementModal";
 import "./theme.css";
+import "@/fonts.css";
+
 
 export default function App() {
   const [showNotes, setShowNotes] = useState(true);

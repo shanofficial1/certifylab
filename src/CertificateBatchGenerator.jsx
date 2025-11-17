@@ -320,72 +320,106 @@ export default function CertificateBatchGenerator() {
     const imgBytes = await fetch(templateDataUrl).then((r) => r.arrayBuffer());
     const customFontBytes = customFontFile ? await customFontFile.arrayBuffer() : null;
 
-    for (let i = 0; i < names.length; i++) {
-      const rawName = names[i];
-      const team = teams[i] ?? "";
+ // make sure this is inside your async generateAll() function
+for (let i = 0; i < names.length; i++) {
+  const rawName = names[i];
+  const team = teams[i] ?? "";
 
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([templateNatural.w, templateNatural.h]);
+  try {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([templateNatural.w, templateNatural.h]);
 
-      // background
-      let bg;
-      if (templateDataUrl.startsWith("data:image/png") || templateDataUrl.includes("image/png")) {
-        bg = await pdfDoc.embedPng(imgBytes);
-      } else {
-        bg = await pdfDoc.embedJpg(imgBytes);
-      }
-      page.drawImage(bg, { x: 0, y: 0, width: templateNatural.w, height: templateNatural.h });
-
-      // description font (independent)
-      let descFontReg, descFontBold;
-      if (customFontBytes && descFontFamily === "Custom") {
-        descFontReg = await pdfDoc.embedFont(customFontBytes, { subset: true });
-        descFontBold = descFontReg; // single file
-      } else {
-        if (descFontFamily === "Times") {
-          descFontReg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-          descFontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-        } else if (descFontFamily === "Courier") {
-          descFontReg = await pdfDoc.embedFont(StandardFonts.Courier);
-          descFontBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
-        } else {
-          descFontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
-          descFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        }
-      }
-
-      // Build tokens, wrap, and optionally justify
-      const color = hexToRgb01(descFontColor);
-      const leftX = paddingPx; // equal left/right padding
-      const contentWidth = Math.max(50, templateNatural.w - 2 * paddingPx);
-      const lineHeight = descFontSize * 1.35;
-
-      const tokens = tokenizeWithPlaceholders(
-        description || "",
-        rawName,
-        team,
-        descFontReg,
-        descFontBold,
-        descFontSize,
-        boldPlaceholders
-      );
-
-      const lines = layoutLines(tokens, contentWidth);
-
-      drawLines(page, lines, {
-        x: leftX,
-        y: descY,
-        size: descFontSize,
-        lineHeight,
-        maxWidth: contentWidth,
-        color: rgb(color.r, color.g, color.b),
-        justify, // full-justify all but last line
-      });
-
-      const bytes = await pdfDoc.save();
-      const fname = `${sanitizeFilename(rawName)}.pdf`;
-      zip.file(fname, bytes);
+    // background
+    let bg;
+    if (templateDataUrl.startsWith("data:image/png") || templateDataUrl.includes("image/png")) {
+      bg = await pdfDoc.embedPng(imgBytes);
+    } else {
+      bg = await pdfDoc.embedJpg(imgBytes);
     }
+    page.drawImage(bg, { x: 0, y: 0, width: templateNatural.w, height: templateNatural.h });
+
+    // --- description font selection (safe) ---
+    let descFontReg = null;
+    let descFontBold = null;
+    // df: chosen font family state variable — ensure this matches your state name
+    const df = typeof descFontFamily !== "undefined" ? descFontFamily : "Helvetica";
+
+    // bundledFonts should be declared in module scope as an array of { label, file }
+    const selectedBundled = typeof bundledFonts !== "undefined" ? bundledFonts.find(f => f.label === df) : null;
+
+    if (selectedBundled) {
+      const fontBytes = await fetch(selectedBundled.file).then(r => r.arrayBuffer());
+      descFontReg = await pdfDoc.embedFont(fontBytes, { subset: true });
+      descFontBold = descFontReg;
+    } else if (df === "Times") {
+      descFontReg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      descFontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    } else if (df === "Courier") {
+      descFontReg = await pdfDoc.embedFont(StandardFonts.Courier);
+      descFontBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
+    } else if (df === "CustomUpload" || df === "Custom") {
+      if (customFontBytes) {
+        descFontReg = await pdfDoc.embedFont(customFontBytes, { subset: true });
+        descFontBold = descFontReg;
+      } else {
+        // fallback
+        descFontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        descFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      }
+    } else {
+      descFontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      descFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    }
+
+    // --- build tokens & layout (you already have these helpers) ---
+    const color = hexToRgb01(descFontColor || "#000000");
+    const leftX = paddingPx || 40; // equal left/right padding
+    const contentWidth = Math.max(50, templateNatural.w - 2 * leftX);
+    const lineHeight = descFontSize * 1.35;
+
+    const tokens = tokenizeWithPlaceholders(
+      description || "",
+      rawName,
+      team,
+      descFontReg,
+      descFontBold,
+      descFontSize,
+      boldPlaceholders
+    );
+
+    const lines = layoutLines(tokens, contentWidth);
+
+    // --- alignment-aware X for PDF drawing ---
+    // decide renderX: if center -> center of page; if right -> right minus padding; else left padding
+    const renderX =
+      (descSettings && descSettings.align === "center") || (!descSettings && align === "center")
+        ? templateNatural.w / 2
+        : (descSettings && descSettings.align === "right") || (!descSettings && align === "right")
+        ? templateNatural.w - leftX
+        : leftX;
+
+    // ensure drawLines accepts opts.align to compute cursorX properly
+    drawLines(page, lines, {
+      x: renderX,
+      y: descY,
+      align: (descSettings && descSettings.align) || align || "center",
+      size: descFontSize,
+      lineHeight,
+      maxWidth: contentWidth,
+      color: rgb(color.r, color.g, color.b),
+      justify, // as you had
+    });
+
+    // save bytes & add to zip
+    const bytes = await pdfDoc.save();
+    const fname = `${sanitizeFilename(rawName)}.pdf`;
+    zip.file(fname, bytes);
+  } catch (err) {
+    console.error(`Failed to generate certificate for "${rawName}" (index ${i}):`, err);
+    // continue with next name rather than aborting everything
+  }
+}
+
 
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, "certificates.zip");

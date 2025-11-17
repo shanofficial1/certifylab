@@ -1,0 +1,29 @@
+@font-face {
+  font-family: "Metropolis";
+  src: url("./fonts/Metropolis-Medium.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("./fonts/PlayfairDisplay-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: url("./fonts/Poppins-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Rengkok Personal";
+  src: url("./fonts/Rengkoxpersonal.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Retro Floral";
+  src: url("./fonts/RetroFloral.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Silentha OT";
+  src: url("./fonts/SilenthaOT.ttf") format("opentype");
+}

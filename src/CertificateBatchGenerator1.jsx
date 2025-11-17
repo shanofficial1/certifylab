@@ -11,9 +11,26 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import logo from "@/assets/logo.png";
-import "./theme.css"; // <-- import theme
+import "./theme.css"; // your theme
 
-// Utility: file -> dataURL
+// ---- Local bundled fonts ----
+import FontMetropolis from "@/fonts/Metropolis-Medium.otf";
+import FontPlayfair from "@/fonts/PlayfairDisplay-Regular.ttf";
+import FontPoppins from "@/fonts/Poppins-Medium.ttf";
+import FontRengkok from "@/fonts/Rengkoxpersonal.otf";
+import FontRetroFloral from "@/fonts/RetroFloral.ttf";
+import FontSilentha from "@/fonts/SilenthaOT.ttf";
+
+const bundledFonts = [
+  { label: "Metropolis", file: FontMetropolis },
+  { label: "Playfair Display", file: FontPlayfair },
+  { label: "Poppins", file: FontPoppins },
+  { label: "Rengkok Personal", file: FontRengkok },
+  { label: "Retro Floral", file: FontRetroFloral },
+  { label: "Silentha OT", file: FontSilentha },
+];
+
+// ---------------- utilities ----------------
 const fileToDataURL = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -39,7 +56,7 @@ const hexToRgb01 = (hex) => {
   return { r: r / 255, g: g / 255, b: b / 255 };
 };
 
-// For tokenizing description placeholders for PDF
+// ---------------- tokenizers / layout ----------------
 function tokenizeWithPlaceholders(text, replacements, fontRegular, fontBold, size, boldPlaceholders) {
   const placeholderRegex = /\{([^\}]+)\}/g;
   const parts = [];
@@ -121,7 +138,7 @@ function drawLines(page, lines, opts) {
   }
 }
 
-// canvas helpers for preview (simpler)
+// ---------------- canvas preview helpers ----------------
 function canvasTokens(text, replacements, boldPlaceholders) {
   const rawParts = text.split(/(\{[^\}]+\})/g);
   const tokens = [];
@@ -174,6 +191,7 @@ function measureAndLayoutCanvas(ctx, baseFont, boldFont, tokens, maxWidth) {
   }
   return lines;
 }
+
 function drawCanvasParagraph(ctx, lines, opts) {
   const { x, y, lineHeightPx, maxWidth, color, baseFont, boldFont, justify, align } = opts;
   ctx.fillStyle = color;
@@ -201,61 +219,25 @@ function drawCanvasParagraph(ctx, lines, opts) {
   }
 }
 
+// ---------------- React component ----------------
 export default function CertificateBatchGenerator1() {
   // Template & preview
   const [templateDataUrl, setTemplateDataUrl] = useState("");
   const [templateNatural, setTemplateNatural] = useState({ w: 0, h: 0 });
   const [templateBytes, setTemplateBytes] = useState(null);
 
+  // description font family & custom upload
+  const [descFontFamily, setDescFontFamily] = useState("Helvetica");
+  const [customFontFile, setCustomFontFile] = useState(null);
 
-  // new — add after other useState declarations
-const [positionsInitialized, setPositionsInitialized] = useState(false);
-
-
-// new — add after templateNatural useEffect or after templateNatural state declarations
-useEffect(() => {
-  if (!templateNatural.w || !templateNatural.h) return;
-  if (positionsInitialized) return;
-
-  // center X is template width / 2
-  const centerX = Math.round(templateNatural.w / 2);
-  // reasonable vertical spacing: start around 45% down the page and gap 48px
-  const startY = Math.round(templateNatural.h * 0.45);
-
-  setDynamicFields(prev => {
-    return prev.map((f, i) => ({
-      ...f,
-      // if user already set a custom position (non-zero), keep it.
-      position: {
-        x: f.position?.x && f.position.x !== 0 ? f.position.x : centerX,
-        y: f.position?.y && f.position.y !== 0 ? f.position.y : Math.max(40, startY - i * 48)
-      },
-      // also set default paddingX to centerX to help alignment calculations
-      paddingX: f.paddingX ?? centerX,
-      // center align by default
-      align: f.align ?? "center"
-    }));
-  });
-
-  setDescSettings(s => ({
-    ...s,
-    position: {
-      x: s.position?.x && s.position.x !== 0 ? s.position.x : centerX,
-      y: s.position?.y && s.position.y !== 0 ? s.position.y : Math.round(templateNatural.h * 0.6)
-    },
-    paddingX: s.paddingX ?? Math.round(templateNatural.w * 0.1),
-    align: s.align ?? "center"
-  }));
-
-  setPositionsInitialized(true);
-}, [templateNatural, positionsInitialized]);
-
+  // new — auto positions
+  const [positionsInitialized, setPositionsInitialized] = useState(false);
 
   // dynamic fields
   const [dynamicCount, setDynamicCount] = useState(2);
   const [dynamicFields, setDynamicFields] = useState([
-    { id: "field1", label: "Field 1", valuesText: "", fontSize: 48, color: "#00000", fontFamily: "Helvetica", position: { x: 400, y: 300 }, paddingX: 0, bold: true, justify: false, visible: true, align: "center" },
-    { id: "field2", label: "Field 2", valuesText: "", fontSize: 20, color: "#00000", fontFamily: "Helvetica", position: { x: 400, y: 260 }, paddingX: 0, bold: true, justify: false, visible: true, align: "center" },
+    { id: "field1", label: "Field 1", valuesText: "", fontSize: 48, color: "#000000", fontFamily: "Helvetica", position: { x: 400, y: 300 }, paddingX: 0, bold: true, justify: false, visible: true, align: "center" },
+    { id: "field2", label: "Field 2", valuesText: "", fontSize: 20, color: "#000000", fontFamily: "Helvetica", position: { x: 400, y: 260 }, paddingX: 0, bold: true, justify: false, visible: true, align: "center" },
   ]);
 
   // description
@@ -277,13 +259,44 @@ useEffect(() => {
   const [isGenerating, setIsGenerating] = useState(false);
   const progress = useRef({ current: 0, total: 0 });
 
-  // ensure dynamicFields length
+  // initialize positions when template loads
+  useEffect(() => {
+    if (!templateNatural.w || !templateNatural.h) return;
+    if (positionsInitialized) return;
+
+    const centerX = Math.round(templateNatural.w / 2);
+    const startY = Math.round(templateNatural.h * 0.45);
+
+    setDynamicFields(prev => prev.map((f, i) => ({
+      ...f,
+      position: {
+        x: (f.position?.x && f.position.x !== 0) ? f.position.x : centerX,
+        y: (f.position?.y && f.position.y !== 0) ? f.position.y : Math.max(40, startY - i * 48),
+      },
+      paddingX: f.paddingX ?? Math.round(templateNatural.w * 0.1),
+      align: f.align ?? "center",
+    })));
+
+    setDescSettings(s => ({
+      ...s,
+      position: {
+        x: s.position?.x && s.position.x !== 0 ? s.position.x : centerX,
+        y: s.position?.y && s.position.y !== 0 ? s.position.y : Math.round(templateNatural.h * 0.6)
+      },
+      paddingX: s.paddingX ?? Math.round(templateNatural.w * 0.1),
+      align: s.align ?? "center"
+    }));
+
+    setPositionsInitialized(true);
+  }, [templateNatural, positionsInitialized]);
+
+  // ensure dynamicFields length tracks dynamicCount
   useEffect(() => {
     setDynamicFields(prev => {
       const arr = [...prev];
       if (dynamicCount > arr.length) {
         for (let i = arr.length; i < dynamicCount; i++) {
-          arr.push({ id: `field${i + 1}`, label: `Field ${i + 1}`, valuesText: "", fontSize: 28, color: "#000000", fontFamily: "Helvetica", position: { x: 400, y: 200 - i * 32 }, paddingX: 0, bold: false, justify: false, visible: true, align: "left" });
+          arr.push({ id: `field${i + 1}`, label: `Field ${i + 1}`, valuesText: "", fontSize: 28, color: "#000000", fontFamily: "Helvetica", position: { x: Math.round(templateNatural.w/2 || 400), y: Math.round((templateNatural.h/2 || 200) - i * 32) }, paddingX: Math.round(templateNatural.w * 0.1) || 80, bold: false, justify: false, visible: true, align: "center" });
         }
       } else if (dynamicCount < arr.length) {
         arr.splice(dynamicCount);
@@ -311,14 +324,10 @@ useEffect(() => {
     const arr = await fetch(dataUrl).then(r => r.arrayBuffer());
     setTemplateDataUrl(dataUrl);
     setTemplateBytes(arr);
-  };
-
-  useEffect(() => {
-    if (!templateDataUrl) return;
     const img = new Image();
     img.onload = () => setTemplateNatural({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = templateDataUrl;
-  }, [templateDataUrl]);
+    img.src = dataUrl;
+  };
 
   // add image/logo
   const addImageFile = async (file) => {
@@ -380,12 +389,12 @@ useEffect(() => {
     const previewRowIndex = Math.max(0, Math.min(previewIndex, Math.max(0, rows.length-1)));
     const repl = {};
     for (let i=0;i<dynamicFields.length;i++) {
-      const lines = dynamicFields[i].valuesText.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-      repl[`field${i+1}`] = lines[previewRowIndex] ?? lines[0] ?? `{field${i+1}}`;
+      const linesArr = dynamicFields[i].valuesText.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+      repl[`field${i+1}`] = linesArr[previewRowIndex] ?? linesArr[0] ?? `{field${i+1}}`;
     }
     const scale = rect.width / templateNatural.w;
 
-    // draw images
+    // draw images (logos) in order
     for (let ii=0; ii<images.length; ii++) {
       const im = images[ii];
       if (!im || !im.visible) continue;
@@ -396,7 +405,7 @@ useEffect(() => {
       const tmp = new Image();
       tmp.src = im.dataUrl;
       if (tmp.complete) ctx.drawImage(tmp, Math.round(screenX), Math.round(screenY), Math.round(drawW), Math.round(drawH));
-      else tmp.onload = () => ctx.drawImage(tmp, Math.round(screenX), Math.round(screenY), Math.round(drawW), Math.round(drawH));
+      else tmp.onload = () => { ctx.drawImage(tmp, Math.round(screenX), Math.round(screenY), Math.round(drawW), Math.round(drawH)); };
       if (ii === selectedImageIndex) { ctx.save(); ctx.strokeStyle = "#ff3b3b"; ctx.lineWidth = 2; ctx.strokeRect(Math.round(screenX)-2, Math.round(screenY)-2, Math.round(drawW)+4, Math.round(drawH)+4); ctx.restore(); }
     }
 
@@ -405,32 +414,65 @@ useEffect(() => {
       const f = dynamicFields[fi];
       if (!f.visible) continue;
       const textVal = repl[`field${fi+1}`];
-      const fam = f.fontFamily === "Times" ? "Times New Roman" : f.fontFamily === "Courier" ? "Courier New" : "Helvetica";
+      const fam = f.fontFamily === "Times" ? "Times New Roman" : f.fontFamily === "Courier" ? "Courier New" : f.fontFamily || "Helvetica";
       const baseFont = `${f.fontSize * scale}px ${fam}`;
       const boldFont = `bold ${f.fontSize * scale}px ${fam}`;
       const tokens = canvasTokens(textVal, repl, f.bold);
       const maxWidth = Math.max(10, (templateNatural.w - 2*(f.paddingX||0)) * scale);
       const linesLayout = measureAndLayoutCanvas(ctx, baseFont, boldFont, tokens, maxWidth);
-      const screenX = (f.position.x || f.paddingX || 0) * scale;
       const screenY = (templateNatural.h - (f.position.y || 0)) * scale;
       const lineHeightPx = f.fontSize * 1.35 * scale;
-      drawCanvasParagraph(ctx, linesLayout, { x: screenX, y: screenY, lineHeightPx, maxWidth, color: f.color, baseFont, boldFont, justify: f.justify, align: f.align || "left" });
+
+      const renderXField =
+        f.align === "center"
+          ? rect.width / 2
+          : f.align === "right"
+          ? rect.width - ((f.paddingX || 0) * scale)
+          : (f.position.x || f.paddingX || 0) * scale;
+
+      drawCanvasParagraph(ctx, linesLayout, {
+        x: renderXField,
+        y: screenY,
+        lineHeightPx,
+        maxWidth,
+        color: f.color,
+        baseFont,
+        boldFont,
+        justify: f.justify,
+        align: f.align || "left",
+      });
     }
 
     // draw description
     if (description) {
-      const fam = descSettings.fontFamily === "Times" ? "Times New Roman" : descSettings.fontFamily === "Courier" ? "Courier New" : "Helvetica";
+      const fam = descSettings.fontFamily === "Times" ? "Times New Roman" : descSettings.fontFamily === "Courier" ? "Courier New" : descSettings.fontFamily || "Helvetica";
       const baseFont = `${descSettings.fontSize * scale}px ${fam}`;
       const boldFont = `bold ${descSettings.fontSize * scale}px ${fam}`;
       const tokens = canvasTokens(description, repl, descSettings.bold);
       const maxWidth = Math.max(10, (templateNatural.w - 2*(descSettings.paddingX || 0)) * scale);
       const linesLayout = measureAndLayoutCanvas(ctx, baseFont, boldFont, tokens, maxWidth);
-      const screenX = (descSettings.position.x || descSettings.paddingX || 0) * scale;
       const screenY = (templateNatural.h - (descSettings.position.y || 0)) * scale;
       const lineHeightPx = descSettings.fontSize * 1.35 * scale;
-      drawCanvasParagraph(ctx, linesLayout, { x: screenX, y: screenY, lineHeightPx, maxWidth, color: descSettings.color, baseFont, boldFont, justify: descSettings.justify, align: descSettings.align || "center" });
-    }
 
+      const renderXDesc =
+        descSettings.align === "center"
+          ? rect.width / 2
+          : descSettings.align === "right"
+          ? rect.width - ((descSettings.paddingX || 0) * scale)
+          : (descSettings.position.x || descSettings.paddingX || 0) * scale;
+
+      drawCanvasParagraph(ctx, linesLayout, {
+        x: renderXDesc,
+        y: screenY,
+        lineHeightPx,
+        maxWidth,
+        color: descSettings.color,
+        baseFont,
+        boldFont,
+        justify: descSettings.justify,
+        align: descSettings.align || "center",
+      });
+    }
   }, [templateDataUrl, templateNatural.w, templateNatural.h, images, dynamicFields, description, descSettings, previewIndex, selectedImageIndex, selectedFieldIndex]);
 
   // handle preview click
@@ -467,6 +509,19 @@ useEffect(() => {
     progress.current = { current: 0, total: rows.length };
     const zip = new JSZip();
     const imgArrBuf = templateBytes;
+    const customFontBytes = customFontFile ? await customFontFile.arrayBuffer() : null;
+
+    // preload bundled font bytes into a map for faster embedding
+    const bundledMap = {};
+    for (const bf of bundledFonts) {
+      try {
+        const bytes = await fetch(bf.file).then(r => r.arrayBuffer());
+        bundledMap[bf.label] = bytes;
+      } catch (err) {
+        // ignore if bundler can't resolve - fallback will happen
+        console.warn("Failed to load bundled font", bf.label, err);
+      }
+    }
 
     for (let r=0; r<rows.length; r++) {
       const record = {};
@@ -478,6 +533,7 @@ useEffect(() => {
       const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage([templateNatural.w, templateNatural.h]);
 
+      // background
       let bg;
       if (templateDataUrl.startsWith("data:image/png") || templateDataUrl.includes("image/png")) bg = await pdfDoc.embedPng(imgArrBuf);
       else bg = await pdfDoc.embedJpg(imgArrBuf);
@@ -497,84 +553,104 @@ useEffect(() => {
         page.drawImage(embedded, { x: xPDF, y: yPDF, width: drawW, height: drawH });
       }
 
-      // embed fonts and draw fields
-      const embedFontsForFamily = async (family) => {
-        if (family === "Times") return [await pdfDoc.embedFont(StandardFonts.TimesRoman), await pdfDoc.embedFont(StandardFonts.TimesRomanBold)];
-        if (family === "Courier") return [await pdfDoc.embedFont(StandardFonts.Courier), await pdfDoc.embedFont(StandardFonts.CourierBold)];
-        return [await pdfDoc.embedFont(StandardFonts.Helvetica), await pdfDoc.embedFont(StandardFonts.HelveticaBold)];
-      };
-
+      // embed fonts for each dynamic field (choose bundled/custom/standard)
       const fieldFonts = [];
-      for (const f of dynamicFields) fieldFonts.push(await embedFontsForFamily(f.fontFamily));
-      const descFonts = await embedFontsForFamily(descSettings.fontFamily);
+      for (const f of dynamicFields) {
+        let reg, bold;
+        // check bundled map
+        if (bundledMap[f.fontFamily]) {
+          const bytes = bundledMap[f.fontFamily];
+          try { reg = await pdfDoc.embedFont(bytes, { subset: true }); bold = reg; }
+          catch { reg = await pdfDoc.embedFont(StandardFonts.Helvetica); bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold); }
+        } else if (f.fontFamily === "Times") {
+          reg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+          bold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+        } else if (f.fontFamily === "Courier") {
+          reg = await pdfDoc.embedFont(StandardFonts.Courier);
+          bold = await pdfDoc.embedFont(StandardFonts.CourierBold);
+        } else {
+          reg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        }
+        fieldFonts.push([reg, bold]);
+      }
 
+      // description fonts
+      let descFontReg, descFontBold;
+      if (bundledMap[descSettings.fontFamily]) {
+        try { descFontReg = await pdfDoc.embedFont(bundledMap[descSettings.fontFamily], { subset: true }); descFontBold = descFontReg; }
+        catch { descFontReg = await pdfDoc.embedFont(StandardFonts.Helvetica); descFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold); }
+      } else if (descSettings.fontFamily === "Times") {
+        descFontReg = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+        descFontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+      } else if (descSettings.fontFamily === "Courier") {
+        descFontReg = await pdfDoc.embedFont(StandardFonts.Courier);
+        descFontBold = await pdfDoc.embedFont(StandardFonts.CourierBold);
+      } else if (descSettings.fontFamily === "CustomUpload" && customFontBytes) {
+        descFontReg = await pdfDoc.embedFont(customFontBytes, { subset: true });
+        descFontBold = descFontReg;
+      } else {
+        descFontReg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        descFontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      }
+
+      // draw dynamic fields
       for (let fi=0; fi<dynamicFields.length; fi++) {
         const f = dynamicFields[fi];
         if (!f.visible) continue;
         const [fontReg, fontBold] = fieldFonts[fi];
         const text = record[`field${fi+1}`] ?? "";
-        const col = hexToRgb01(f.color);
-        const leftX = f.position.x ?? f.paddingX ?? 0;
+        const col = hexToRgb01(f.color || "#000000");
+        const leftX = f.position.x ?? f.paddingX ?? Math.round(templateNatural.w/10);
         const contentWidth = Math.max(10, templateNatural.w - 2*(f.paddingX || 0));
         const lineHeight = f.fontSize * 1.35;
 
-        const tokens = tokenizeWithPlaceholders(text, {}, fontReg, fontBold, f.fontSize, f.bold);
-        // if single-line, compute width
+        // compute tokens & lines
+        const tokens = tokenizeWithPlaceholders(text, record, fontReg, fontBold, f.fontSize, f.bold);
+
+        // If single-line fits, draw directly with alignment
         const textWidth = (f.bold ? fontBold : fontReg).widthOfTextAtSize(text, f.fontSize);
         if (textWidth <= contentWidth) {
           let x = leftX;
-          if (f.align === "center") x = leftX - textWidth / 2;
-          if (f.align === "right") x = leftX - textWidth;
-          page.drawText(text, { x, y: f.position.y ?? Math.floor(templateNatural.h/2), size: f.fontSize, font: f.bold ? fontBold : fontReg, color: rgb(col.r, col.g, col.b) });
+          if (f.align === "center") x = templateNatural.w / 2 - textWidth / 2;
+          if (f.align === "right") x = templateNatural.w - (f.paddingX || 0) - textWidth;
+          const y = f.position.y ?? Math.floor(templateNatural.h / 2);
+          page.drawText(text, { x, y, size: f.fontSize, font: f.bold ? fontBold : fontReg, color: rgb(col.r, col.g, col.b) });
         } else {
-          // wrap
-          const parts = text.split(/(\s+)/).map(p => ({ text: p, font: f.bold ? fontBold : fontReg, isSpace: /^\s+$/.test(p) }));
-          for (const p of parts) p.width = p.font.widthOfTextAtSize(p.text, f.fontSize);
-          const lines = layoutLines(parts, contentWidth);
-const renderX =
-  align === "center"
-    ? templateNatural.w / 2
-    : align === "right"
-    ? templateNatural.w - paddingPx
-    : paddingPx;
-
-drawLines(page, lines, {
-  x: renderX,
-  y: descY,
-  align,
-  size: descFontSize,
-  lineHeight,
-  maxWidth: contentWidth,
-  color: rgb(color.r, color.g, color.b),
-  justify,
-});
+          const lines = layoutLines(tokens, contentWidth);
+          // compute renderX for alignment
+          const renderX = f.align === "center" ? templateNatural.w / 2 : f.align === "right" ? templateNatural.w - (f.paddingX || 0) : (f.position.x ?? f.paddingX ?? 0);
+          drawLines(page, lines, {
+            x: renderX,
+            y: f.position.y ?? Math.round(templateNatural.h / 2),
+            align: f.align || "left",
+            size: f.fontSize,
+            lineHeight,
+            maxWidth: contentWidth,
+            color: rgb(col.r, col.g, col.b),
+            justify: f.justify,
+          });
         }
       }
 
-      // description
-      const colorDesc = hexToRgb01(descSettings.color);
-      const leftXDesc = descSettings.position.x ?? descSettings.paddingX ?? 0;
+      // draw description
+      const colorDesc = hexToRgb01(descSettings.color || "#000000");
+      const leftXDesc = descSettings.position.x ?? descSettings.paddingX ?? Math.round(templateNatural.w/10);
       const contentWidthDesc = Math.max(10, templateNatural.w - 2*(descSettings.paddingX || 0));
       const lineHeightDesc = descSettings.fontSize * 1.35;
-      const tokensDesc = tokenizeWithPlaceholders(description || "", record, descFonts[0], descFonts[1], descSettings.fontSize, descSettings.bold);
+      const tokensDesc = tokenizeWithPlaceholders(description || "", record, descFontReg, descFontBold, descSettings.fontSize, descSettings.bold);
       const linesDesc = layoutLines(tokensDesc, contentWidthDesc);
-const renderX =
-  align === "center"
-    ? templateNatural.w / 2
-    : align === "right"
-    ? templateNatural.w - paddingPx
-    : paddingPx;
-
-drawLines(page, lines, {
-  x: renderX,
-  y: descY,
-  align,
-  size: descFontSize,
-  lineHeight,
-  maxWidth: contentWidth,
-  color: rgb(color.r, color.g, color.b),
-  justify,
-});
+      const renderXDesc = descSettings.align === "center" ? templateNatural.w / 2 : descSettings.align === "right" ? templateNatural.w - (descSettings.paddingX || 0) : (descSettings.position.x ?? descSettings.paddingX ?? 0);
+      drawLines(page, linesDesc, {
+        x: renderXDesc,
+        y: descSettings.position.y ?? Math.round(templateNatural.h * 0.55),
+        align: descSettings.align || "center",
+        size: descSettings.fontSize,
+        lineHeight: lineHeightDesc,
+        maxWidth: contentWidthDesc,
+        color: rgb(colorDesc.r, colorDesc.g, colorDesc.b),
+        justify: descSettings.justify,
+      });
 
       const bytes = await pdfDoc.save();
       const fname = `${sanitizeFilename(record.field1 || `certificate-${r+1}`)}.pdf`;
@@ -588,7 +664,7 @@ drawLines(page, lines, {
     progress.current = { current: 0, total: 0 };
   };
 
-  // UI markup (theme classes used)
+  // UI markup
   return (
     <>
       <header className="sticky top-0 z-50 navbar-theme" style={{ borderBottom: "1px solid var(--theme-border)" }}>
@@ -699,11 +775,12 @@ drawLines(page, lines, {
                       </div>
                       <div>
                         <Label>Font Family</Label>
-                        <select value={f.fontFamily} onChange={(e) => updateDynamicField(idx, { fontFamily: e.target.value })} style={{ width: "100%", padding: 8, borderRadius: 8 }}>
+                        <select className="block w-full border rounded-lg p-2" value={f.fontFamily} onChange={(e) => updateDynamicField(idx, { fontFamily: e.target.value })}>
                           <option value="Helvetica">Helvetica</option>
                           <option value="Times">Times</option>
                           <option value="Courier">Courier</option>
-                          <option value="Custom">Custom</option>
+                          {bundledFonts.map(b => <option key={b.label} value={b.label}>{b.label}</option>)}
+                          <option value="CustomUpload">Custom (upload)</option>
                         </select>
                       </div>
                       <div>
@@ -733,15 +810,12 @@ drawLines(page, lines, {
 
                       <Switch checked={f.visible} onCheckedChange={(v) => updateDynamicField(idx, { visible: v })} id={`vis-${idx}`} />
                       <Label htmlFor={`vis-${idx}`}>Visible</Label>
-
                     </div>
-                      <div style={{ margin: 8}}>
-                        <Button onClick={() => { setSelectedFieldIndex(idx); setSelectMode("field"); alert("Now click the preview to set this field position."); }} className="btn-theme ">Set Position</Button>
-                      </div>
-                      
+                    <div style={{ margin: 8}}>
+                      <Button onClick={() => { setSelectedFieldIndex(idx); setSelectMode("field"); alert("Now click the preview to set this field position."); }} className="btn-theme ">Set Position</Button>
+                    </div>
                   </div>
                 ))}
-
               </CardContent>
             </Card>
 
@@ -763,11 +837,12 @@ drawLines(page, lines, {
                   </div>
                   <div>
                     <Label>Font Family</Label>
-                    <select value={descSettings.fontFamily} onChange={(e) => setDescSettings(s => ({ ...s, fontFamily: e.target.value }))} style={{ width: "100%", padding: 8, borderRadius: 8 }}>
+                    <select className="block w-full border rounded-lg p-2" value={descSettings.fontFamily} onChange={(e) => setDescSettings(s => ({ ...s, fontFamily: e.target.value }))}>
                       <option value="Helvetica">Helvetica</option>
                       <option value="Times">Times</option>
                       <option value="Courier">Courier</option>
-                      <option value="Custom">Custom</option>
+                      {bundledFonts.map(b => <option key={b.label} value={b.label}>{b.label}</option>)}
+                      <option value="CustomUpload">Custom (upload)</option>
                     </select>
                   </div>
                   <div>
@@ -811,27 +886,19 @@ drawLines(page, lines, {
                 </div>
 
                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-  <Button
-    onClick={() => {
-      updateDynamicField(0, { valuesText: "Arjun Nair\nSneha S Kumar\nRahul Menon\nDiya Jose\nNaveen Raj" });
-      if (dynamicFields[1]) updateDynamicField(1, { valuesText: "Alpha Tech\nQuantum Sparks\nCode Titans\nNebula Crew\nPixel Forge" });
-    }}
-    className="btn-theme"
-  >
-    Fill demo data
-  </Button>
+                  <Button onClick={() => {
+                    updateDynamicField(0, { valuesText: "Arjun Nair\nSneha S Kumar\nRahul Menon\nDiya Jose\nNaveen Raj" });
+                    if (dynamicFields[1]) updateDynamicField(1, { valuesText: "Alpha Tech\nQuantum Sparks\nCode Titans\nNebula Crew\nPixel Forge" });
+                  }} className="btn-theme">Fill demo data</Button>
 
-  <div style={{ marginLeft: "auto" }} className="text-theme-muted">
-    {isGenerating ? `Generating ${progress.current.current}/${progress.current.total}` : "Ready"}
-  </div>
-</div>
-
+                  <div style={{ marginLeft: "auto" }} className="text-theme-muted">
+                    {isGenerating ? `Generating ${progress.current.current}/${progress.current.total}` : "Ready"}
+                  </div>
+                </div>
 
                 <div style={{ marginBottom: 8 }}>
                   <Button onClick={generateAll} className="btn-theme" disabled={isGenerating}>{isGenerating ? "Generating..." : "Generate ZIP"}</Button>
                 </div>
-
-               
               </CardContent>
             </Card>
           </div>
